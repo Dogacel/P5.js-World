@@ -9,15 +9,21 @@ function setup() {
 
   world = new World(canvas);
 
-  tmp = new WObject(100, 100, 100, 100);
+  tmp = []
 
-  world.addWObject(tmp);
+  for (let i = 0 ; i < 6 ; i++) {
+      append(tmp, new WObject(50, 50, 50 + i*55, 50));
+      world.addWObject(tmp[i]);
+      console.log(world.wobjects[i]);
+  }
 
   let button = createButton("Click me");
 
-  canvas.mouseClicked(() => {
-    world.addWAction(smoothMove(tmp, V(mouseX - 50, mouseY - 50), 100));
-    console.log(mouseX, mouseY);
+  button.mouseClicked(() => {
+    for(let i = 0 ; i < tmp.length ; i++) {
+        world.addWAction(smoothMove(tmp[i], V(300, 300), 100));
+    }
+
   });
 
 }
@@ -37,17 +43,18 @@ function smoothMove(object, destination, time) {
   var dxtime = time;
 
   return new WAction(
-  tmp.id, () =>
+  object.id, () =>
     {
       let angleTime = map(dxtime, time, 0, 0, PI);
-      return V(vx * sin(angleTime), vy * sin(angleTime));
+      let sintime = sin(angleTime);
+      return V(vx * sintime * 15709/10000 , vy * sintime * 15709/10000);
     }, () =>
     {
 
       if (--dxtime == 0) {
         //object.coordinate.x = destination.x;
         //object.coordinate.y = destination.y;
-        console.log(object.coordinate.x+ " : " + object.coordinate.y);
+        //console.log(object.coordinate.x+ " : " + object.coordinate.y);
         return true;
       }
       return false;
