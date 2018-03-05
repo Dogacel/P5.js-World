@@ -47,13 +47,13 @@ function smoothMove(object, destination, time) {
     {
       let angleTime = map(dxtime, time, 0, 0, PI);
       let sintime = sin(angleTime);
-      return V(vx * sintime * 15709/10000 , vy * sintime * 15709/10000);
+      return V(vx * sintime * PI / 2  , vy * sintime * PI / 2);
     }, () =>
     {
 
       if (--dxtime == 0) {
-        //object.coordinate.x = destination.x;
-        //object.coordinate.y = destination.y;
+        object.coordinate.x = round(object.coordinate.x);
+        object.coordinate.y = round(object.coordinate.y);
         //console.log(object.coordinate.x+ " : " + object.coordinate.y);
         return true;
       }
