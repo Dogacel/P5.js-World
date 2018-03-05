@@ -1,5 +1,9 @@
 var world, tmp;
 
+function V(x, y) {
+  return {'x' : x, 'y' : y};
+}
+
 function setup() {
   var canvas = createCanvas(500, 500);
 
@@ -7,13 +11,15 @@ function setup() {
 
   tmp = new WObject(100, 100, 100, 100);
 
-
   world.addWObject(tmp);
 
   let button = createButton("Click me");
-  button.mouseClicked(() => {
-    world.addWAction(new WAction(0, 0.1, 0, 0.01, 10, 10, tmp.id));
+
+  canvas.mouseClicked(() => {
+    world.addWAction(smoothMove(tmp, V(mouseX - 50, mouseY - 50), 100));
+    console.log(mouseX, mouseY);
   });
+
 }
 
 function draw() {
@@ -21,12 +27,55 @@ function draw() {
   world.drawWorld();
 }
 
+function smoothMove(object, destination, time) {
+  let dx = -(object.coordinate.x - destination.x);
+  let dy = -(object.coordinate.y - destination.y);
+
+  let vx = dx / time;
+  let vy = dy / time;
+
+  var dxtime = time;
+
+  return new WAction(
+  tmp.id, () =>
+    {
+      let angleTime = map(dxtime, time, 0, 0, PI);
+      return V(vx * sin(angleTime), vy * sin(angleTime));
+    }, () =>
+    {
+
+      if (--dxtime == 0) {
+        //object.coordinate.x = destination.x;
+        //object.coordinate.y = destination.y;
+        console.log(object.coordinate.x+ " : " + object.coordinate.y);
+        return true;
+      }
+      return false;
+    }
+  );
+}
+
+function move(object, destination, time) {
+  let vx = -(object.coordinate.x - destination.x) / time;
+  let vy = -(object.coordinate.y - destination.y) / time;
+
+  var dxtime = time;
+
+  return new WAction(
+  tmp.id, () =>
+    {
+      return V(vx, vy);
+    }, () =>
+    {
+      return --dxtime == 0;
+    }
+  );
+}
 
 function WObject(a, b, x, y) {
   this.width = a;
   this.height = b;
-  this.x = x;
-  this.y = y;
+  this.coordinate = {'x' : x , 'y' : y};
   this.id;
 
   this.addID = function(id) {
@@ -34,19 +83,17 @@ function WObject(a, b, x, y) {
   }
 
   this.draw = function() {
-    rect(this.x, this.y, this.width, this.height);
+    rect(this.coordinate.x, this.coordinate.y, this.width, this.height);
   }
 }
 
-function WAction(ax, ay, fx, fy, vx0, vy0, bindID) {
-  this.ax = ax;
-  this.ay = ay;
-  this.fx = fx;
-  this.fy = fy;
-  this.vx = vx0;
-  this.vy = vy0;
+function WAction(bindID, deltaFunction = () => {}, endFunction = () => {}) {
 
   this.bindID = bindID;
+
+  this.delta = deltaFunction;
+
+  this.end = endFunction;
 }
 
 function World(canvas) {
@@ -64,31 +111,15 @@ function World(canvas) {
   this.tick = function() {
     for (let i = 0 ; i < this.wactions.length ; i++) {
       let waction = this.wactions[i];
-      this.wobjects[waction.bindID].x += waction.vx;
-      this.wobjects[waction.bindID].y += waction.vy;
 
-      waction.vx += waction.ax;
-      waction.vy += waction.ay;
-
-      waction.ax -= waction.fx;
-      waction.ay -= waction.fy;
-
-      if ( waction.ax * waction.fx <= 0 ) {
-        if (abs(waction.ax) <= abs(waction.fx)) {
-          waction.ax = 0;
-        }
+      if(this.wactions[i].end()) {
+        this.wactions.splice(i, 1);
+        continue;
       }
 
-      if ( waction.ay * waction.fy <= 0 ) {
-        if (abs(waction.ay) <= abs(waction.fy)) {
-          waction.ay = 0;
-        }
-      }
-
-
-      if (waction.ay == 0 && waction.ax == 0) {
-        this.wactions.splice(i,1);
-      }
+      let delta = this.wactions[i].delta()
+      this.wobjects[waction.bindID].coordinate.x += delta.x;
+      this.wobjects[waction.bindID].coordinate.y += delta.y;
 
     }
   }
