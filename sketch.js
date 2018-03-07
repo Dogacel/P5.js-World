@@ -21,7 +21,8 @@ function setup() {
 
   button.mouseClicked(() => {
     for(let i = 0 ; i < tmp.length ; i++) {
-        world.addWAction(smoothMove(tmp[i], V(300, 300), 100));
+        world.addWAction(smoothMove(tmp[i], V(300, 300), 40))
+        .queueAction(smoothMove(tmp[i], V(0, 0), 100));
     }
 
   });
@@ -34,16 +35,19 @@ function draw() {
 }
 
 function smoothMove(object, destination, time) {
-  let dx = -(object.coordinate.x - destination.x);
-  let dy = -(object.coordinate.y - destination.y);
 
-  let vx = dx / time;
-  let vy = dy / time;
-
-  var dxtime = time;
+  var dx, dy, vx, vy, dxtime;
 
   return new WAction(
-  object.id, () =>
+  object.id,() => {
+    dx = -(object.coordinate.x - destination.x);
+    dy = -(object.coordinate.y - destination.y);
+
+    vx = dx / time;
+    vy = dy / time;
+
+    dxtime = time;
+  }, () =>
     {
       let angleTime = map(dxtime, time, 0, 0, PI);
       let sintime = sin(angleTime);
@@ -63,13 +67,16 @@ function smoothMove(object, destination, time) {
 }
 
 function move(object, destination, time) {
-  let vx = -(object.coordinate.x - destination.x) / time;
-  let vy = -(object.coordinate.y - destination.y) / time;
 
-  var dxtime = time;
+  var dx, dy, vx, vy, dxtime;
 
   return new WAction(
-  tmp.id, () =>
+  tmp.id,() => {
+    vx = -(object.coordinate.x - destination.x) / time;
+    vy = -(object.coordinate.y - destination.y) / time;
+
+    dxtime = time;
+  }, () =>
     {
       return V(vx, vy);
     }, () =>
@@ -94,9 +101,28 @@ function WObject(a, b, x, y) {
   }
 }
 
-function WAction(bindID, deltaFunction = () => {}, endFunction = () => {}) {
+function WAction(bindID, initFunction = () => {}, deltaFunction = () => {}, endFunction = () => {}) {
 
   this.bindID = bindID;
+  this.queuedAction = null;
+  this.queueAction = function(nextAction) {
+    if (this.queuedAction != null) {
+      this.queuedAction.queueAction(nextAction);
+    } else {
+      this.queuedAction = nextAction;
+    }
+    return this;
+  }
+
+  this.hasQueue = function () {
+    return this.queuedAction != null;
+  }
+
+  this.getNextQueue = function () {
+    return this.queuedAction;
+  }
+
+  this.init = initFunction;
 
   this.delta = deltaFunction;
 
@@ -120,7 +146,12 @@ function World(canvas) {
       let waction = this.wactions[i];
 
       if(this.wactions[i].end()) {
-        this.wactions.splice(i, 1);
+        if (this.wactions[i].hasQueue()) {
+          this.wactions[i] = this.wactions[i].getNextQueue();
+          this.wactions[i].init();
+        } else {
+          this.wactions.splice(i, 1);
+        }
         continue;
       }
 
@@ -137,7 +168,9 @@ function World(canvas) {
   }
 
   this.addWAction = function(waction) {
+    waction.init();
     append(this.wactions, waction);
+    return this.wactions[this.wactions.length - 1];
   }
 
 }
